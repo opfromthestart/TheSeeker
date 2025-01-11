@@ -8,7 +8,8 @@ use crate::game::player::{
     Attacking, CanAttack, CanDash, CanStealth, Player, PlayerConfig,
     WhirlAbility,
 };
-use crate::graphics::{ability_cooldown, player_hp};
+use crate::graphics::player_hp;
+// use crate::graphics::ability_cooldown;
 use crate::prelude::*;
 use crate::ui::ability_widget::{
     AbilityWidget, AbilityWidgetCommands, AbilityWidgetConfig,
@@ -247,14 +248,15 @@ fn update_dash_ability_ui(
             Without<AbilityWidget>,
         ),
     >,
-    config: Res<PlayerConfig>,
+    // config: Res<PlayerConfig>,
     mut commands: Commands,
 ) {
     let Some(can_dash) = player.iter().next() else {
         return;
     };
     for entity in ui.iter() {
-        let factor = can_dash.remaining_cooldown / can_dash.total_cooldown;
+        let factor =
+            can_dash.remaining_cooldown as f32 / can_dash.total_cooldown as f32;
         commands.entity(entity).factor(factor);
     }
 }
@@ -296,7 +298,8 @@ fn update_stealth_ability_ui(
         return;
     };
     for entity in stealth_ui.iter() {
-        let factor = stealth.remaining_cooldown / config.stealth_cooldown;
+        let factor =
+            stealth.remaining_cooldown as f32 / config.stealth_cooldown as f32;
         commands.entity(entity).factor(factor);
     }
 }

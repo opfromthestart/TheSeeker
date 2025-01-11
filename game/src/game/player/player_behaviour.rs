@@ -20,13 +20,15 @@ use super::{
     DashStrike, DashType, JumpCount, Knockback, PlayerStats, Pushback,
     StatType, Stealthing, Whirling,
 };
+use crate::camera::CameraShake;
 use crate::game::attack::{Attack, SelfPushback, Stealthed};
 use crate::game::enemy::Enemy;
 use crate::game::gentstate::{Facing, TransitionQueue, Transitionable};
 use crate::game::player::{
     Attacking, CanAttack, CanDash, CoyoteTime, Dashing, Falling, Grounded,
     HitFreezeTime, Idle, Jumping, Player, PlayerAction, PlayerConfig,
-    PlayerGfx, PlayerStateSet, Running, WallSlideTime, WhirlAbility,
+    PlayerGfx, PlayerStatMod, PlayerStateSet, Running, WallSlideTime,
+    WhirlAbility,
 };
 use crate::prelude::{
     any_with_component, App, BuildChildren, Commands, DetectChanges,
@@ -34,7 +36,6 @@ use crate::prelude::{
     Plugin, Query, Res, Transform, TransformBundle, With, Without,
 };
 use crate::StateDespawnMarker;
-use crate::{camera::CameraShake, game::player::PlayerStatMod};
 
 /// Player behavior systems.
 /// Do stuff here in states and add transitions to other states by pushing
@@ -109,7 +110,6 @@ pub fn player_stealth(
     >,
     mut sprites: Query<&mut Sprite>,
     config: Res<PlayerConfig>,
-    time: Res<GameTime>,
 ) {
     for (mut stealthing, mut transitions, gent) in query.iter_mut() {
         let mut sprite = sprites.get_mut(gent.e_gfx).unwrap();
@@ -117,11 +117,11 @@ pub fn player_stealth(
             // turn player stealth
             sprite.color = sprite.color.with_a(0.5);
         } else {
-            stealthing.duration += 1.0 / time.hz as f32;
+            stealthing.duration += 1.;
             if stealthing.duration > config.stealth_duration {
                 sprite.color = sprite.color.with_a(1.);
 
-                stealthing.duration = 0.0;
+                stealthing.duration = 0.;
                 transitions.push(Stealthing::new_transition(
                     CanStealth::new(&config),
                 ));
@@ -141,20 +141,19 @@ pub fn player_can_stealth(
         (With<Player>, With<Gent>),
     >,
     mut sprites: Query<&mut Sprite, With<PlayerGfx>>,
-    time: Res<GameTime>,
     mut commands: Commands,
 ) {
     for (action_state, mut can_stealth, mut transition_queue, statmod, gent) in
         q_gent.iter_mut()
     {
-        can_stealth.remaining_cooldown -= statmod.cdr / time.hz as f32;
+        can_stealth.remaining_cooldown -= statmod.cdr;
         // Return to base sprite color when exiting stealth
         if can_stealth.is_added() {
             let mut sprite = sprites.get_mut(gent.e_gfx).unwrap();
             sprite.color = sprite.color.with_a(1.0);
         }
         if action_state.just_pressed(&PlayerAction::Stealth) {
-            if can_stealth.remaining_cooldown <= 0.0 {
+            if can_stealth.remaining_cooldown <= 0. {
                 transition_queue.push(CanStealth::new_transition(
                     Stealthing::default(),
                 ));
@@ -446,7 +445,6 @@ pub fn player_can_dash(
         ),
         (With<Player>, With<Gent>),
     >,
-    time: Res<GameTime>,
     config: Res<PlayerConfig>,
     mut commands: Commands,
 ) {
@@ -460,7 +458,7 @@ pub fn player_can_dash(
         hitfreeze,
     ) in q_gent.iter_mut()
     {
-        can_dash.remaining_cooldown -= statmod.cdr / time.hz as f32;
+        can_dash.remaining_cooldown -= statmod.cdr;
         if action_state.just_pressed(&PlayerAction::Dash) {
             if can_dash.remaining_cooldown <= 0.0 {
                 let dash_action = Dashing::from_action_state(action_state);
@@ -541,7 +539,6 @@ pub fn player_dash(
         With<Player>,
     >,
     config: Res<PlayerConfig>,
-    time: Res<GameTime>,
 ) {
     for (
         stats,
@@ -560,7 +557,12 @@ pub fn player_dash(
                 *hitfreeze = HitFreezeTime(u32::MAX, None)
             }
         } else {
-            dashing.duration += 1.0 / time.hz as f32;
+            dashing.duration += 1.0;
+            // println!(
+            //     "{} {}",
+            //     dashing.duration,
+            //     dashing.dash_duration(&config)
+            // );
             if dashing.duration > dashing.dash_duration(&config) {
                 dashing.duration = 0.0;
                 // slow our velocity to the players normal max velocity, without adjusting our trajectory
@@ -675,7 +677,6 @@ pub fn player_collisions(
     >,
     mut q_enemy: Query<(Entity, &mut Collider), (With<Enemy>, Without<Player>)>,
     mut commands: Commands,
-    time: Res<GameTime>,
     config: Res<PlayerConfig>,
 ) {
     for (
@@ -712,7 +713,7 @@ pub fn player_collisions(
                 possible_pos,
                 shape_dir,
                 &*shape,
-                projected_velocity.length() / time.hz as f32 + 0.5,
+                projected_velocity.length() + 0.5,
                 interaction,
                 Some(entity),
             ) {
@@ -879,15 +880,14 @@ pub fn player_collisions(
             }
         }
 
-        pos.translation = (pos.translation.xy()
-            + linear_velocity.xy() * (1.0 / time.hz as f32))
-            .extend(z);
+        pos.translation =
+            (pos.translation.xy() + linear_velocity.xy()).extend(z);
 
         if let Some(mut slide) = slide {
             if wall_slide {
                 slide.0 = 0.0;
             } else {
-                slide.0 += 1.0 / time.hz as f32;
+                slide.0 += 1.0;
             }
         }
     }
@@ -916,7 +916,6 @@ fn player_grounded(
             Without<Dashing>,
         ),
     >,
-    time: Res<GameTime>,
     config: Res<PlayerConfig>,
 ) {
     // in seconds
@@ -950,7 +949,7 @@ fn player_grounded(
                 // resets the c_time every time ground gets close again.
                 c_time.0 = 0.0;
             } else {
-                c_time.0 += (1.0 / time.hz) as f32;
+                c_time.0 += 1.0;
             }
             if c_time.0 < max_coyote_time {
                 in_c_time = true;
@@ -988,7 +987,6 @@ fn player_falling(
             Without<Dashing>,
         ),
     >,
-    time: Res<GameTime>,
     config: Res<PlayerConfig>,
 ) {
     for (
@@ -1007,9 +1005,7 @@ fn player_falling(
             hits.cast(&spatial_query, &transform, Some(entity))
         {
             // if we are ~touching the ground
-            if (toi.toi + velocity.y * (1.0 / time.hz) as f32)
-                < GROUNDED_THRESHOLD
-            {
+            if (toi.toi + velocity.y) < GROUNDED_THRESHOLD {
                 transitions.push(Falling::new_transition(Grounded));
                 // stop falling
                 velocity.y = 0.0;
@@ -1124,7 +1120,6 @@ fn add_attack(
         ),
     >,
     player_config: Res<PlayerConfig>,
-    time: Res<GameTime>,
 ) {
     for (
         mut transitions,
@@ -1147,8 +1142,7 @@ fn add_attack(
         }
         if let Some(whirl) = maybe_whirl_ability {
             if whirl.energy
-                - (Whirling::MIN_TICKS as f32 * player_config.whirl_cost
-                    / time.hz as f32)
+                - (Whirling::MIN_TICKS as f32 * player_config.whirl_cost)
                 > 0.0
                 && is_grounded
                 && action_state.pressed(&PlayerAction::Whirl)
@@ -1204,7 +1198,7 @@ fn player_attack(
                     animation.set_slot("Start", true);
 
                     let is_player_pressed_against_wall = wall_slide_time
-                        .is_some_and(|s| s.is_pressed_against_wall(&time));
+                        .is_some_and(|s| s.is_pressed_against_wall());
                     let arrow_direction = if is_player_pressed_against_wall {
                         -facing.direction()
                     } else {
@@ -1332,11 +1326,9 @@ fn player_attack(
 pub fn player_whirl_charge(
     mut query: Query<(&mut WhirlAbility, &PlayerStatMod), Without<Whirling>>,
     config: Res<PlayerConfig>,
-    time: Res<GameTime>,
 ) {
     for (mut whirl, statmod) in query.iter_mut() {
-        whirl.energy = (whirl.energy
-            + (config.whirl_regen * statmod.cdr) / time.hz as f32)
+        whirl.energy = (whirl.energy + (config.whirl_regen * statmod.cdr))
             .clamp(0.0, config.max_whirl_energy);
     }
 }
@@ -1370,7 +1362,6 @@ pub fn player_whirl(
     >,
     mut commands: Commands,
     config: Res<PlayerConfig>,
-    time: Res<GameTime>,
 ) {
     for (
         entity,
@@ -1384,7 +1375,7 @@ pub fn player_whirl(
     ) in gent_query.iter_mut()
     {
         whirling.ticks += 1;
-        whirl_ability.energy -= config.whirl_cost / time.hz as f32;
+        whirl_ability.energy -= config.whirl_cost;
         if action_state.pressed(&PlayerAction::Whirl)
             || whirling.ticks < Whirling::MIN_TICKS
         {

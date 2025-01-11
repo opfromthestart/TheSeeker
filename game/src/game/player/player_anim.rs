@@ -5,6 +5,7 @@ use theseeker_engine::physics::LinearVelocity;
 use theseeker_engine::prelude::{GameTickUpdate, GameTime};
 use theseeker_engine::script::ScriptPlayer;
 
+use super::player_weapon::PlayerWeapon;
 use super::DashStrike;
 use crate::appstate::AppState;
 use crate::game::gentstate::Facing;
@@ -16,8 +17,6 @@ use crate::prelude::{
     in_state, Added, App, Has, IntoSystemConfigs, Local, Or, Plugin, Query,
     Res, With, Without,
 };
-
-use super::player_weapon::PlayerWeapon;
 
 /// play animations here, run after transitions
 pub struct PlayerAnimationPlugin;
@@ -245,7 +244,6 @@ fn sprite_flip(
     mut gfx_query: Query<&mut ScriptPlayer<SpriteAnimation>, With<PlayerGfx>>,
     mut current_direction: Local<bool>,
     mut old_direction: Local<bool>,
-    time: Res<GameTime>,
     weapon: Res<PlayerWeapon>,
 ) {
     for (facing, gent, wall_slide_time) in query.iter() {
@@ -254,8 +252,8 @@ fn sprite_flip(
             let mut facing = facing.clone();
 
             // Have the player face away from the wall if they are attacking while wall sliding
-            let pressed_on_wall = wall_slide_time
-                .is_some_and(|s| s.is_pressed_against_wall(&time));
+            let pressed_on_wall =
+                wall_slide_time.is_some_and(|s| s.is_pressed_against_wall());
             let is_attacking_while_falling =
                 player.current_key() == Some(&weapon.get_anim_key("BasicAir"));
             if pressed_on_wall && is_attacking_while_falling {

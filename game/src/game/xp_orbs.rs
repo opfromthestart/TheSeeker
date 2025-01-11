@@ -1,13 +1,12 @@
 use bevy::prelude::*;
 use rand::Rng;
-use theseeker_engine::{
-    physics::LinearVelocity,
-    time::{GameTickUpdate, GameTime, GameTimeAppExt},
-};
+use theseeker_engine::physics::LinearVelocity;
+use theseeker_engine::time::{GameTickUpdate, GameTimeAppExt};
 
+use super::enemy::Enemy;
+use super::gentstate::Dead;
+use super::player::Player;
 use crate::game::player::{Passive, Passives};
-
-use super::{enemy::Enemy, gentstate::Dead, player::Player};
 
 pub struct XpPlugin;
 impl Plugin for XpPlugin {
@@ -122,7 +121,7 @@ fn update_orbs_vel(
             xp_event.send(XpOrbPickup);
         } else {
             const SPEEDUP_DIST: f32 = 150.0;
-            //let scaled_dist = ((100.0 - dist).powi(2) / 100.).clamp(0.0, 2.);
+            // let scaled_dist = ((100.0 - dist).powi(2) / 100.).clamp(0.0, 2.);
             let scaled_dist = (2. * (SPEEDUP_DIST - dist.min(SPEEDUP_DIST))
                 / SPEEDUP_DIST)
                 .powi(2);
@@ -137,9 +136,8 @@ fn update_orbs_pos(
         &LinearVelocity,
         &mut XpOrb,
     )>,
-    time: Res<GameTime>,
 ) {
-    let delta = 1.0 / time.hz as f32;
+    let delta = 1.0;
 
     for (mut tr, vel, mut xp_orb) in query.iter_mut() {
         tr.translation += vel.0.extend(0.) * delta;

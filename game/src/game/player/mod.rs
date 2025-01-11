@@ -21,8 +21,9 @@ use theseeker_engine::physics::{
 };
 
 use super::physics::Knockback;
+use crate::game::attack::*;
 use crate::game::gentstate::*;
-use crate::game::{attack::*, xp_orbs::XpOrbPickup};
+use crate::game::xp_orbs::XpOrbPickup;
 use crate::prelude::*;
 
 pub struct PlayerPlugin;
@@ -180,7 +181,7 @@ impl Passives {
     }
 }
 
-//they could also be components...limit only by the pickup/gain function instead of sized hashmap
+// they could also be components...limit only by the pickup/gain function instead of sized hashmap
 #[derive(Debug, Eq, PartialEq, Hash, EnumIter)]
 pub enum Passive {
     /// Heal when killing an enemy
@@ -418,12 +419,12 @@ fn setup_player(
                     total_cooldown: 0.0,
                 },
                 CanStealth {
-                    remaining_cooldown: 0.0,
+                    remaining_cooldown: 0.,
                 },
             ),
             (
                 PlayerStats::init_from_config(&config),
-                //maybe consolidate with PlayerStats
+                // maybe consolidate with PlayerStats
                 PlayerStatMod::new(),
                 EnemiesNearby(0),
             ),
@@ -533,7 +534,7 @@ pub struct Attacking {
 impl Attacking {
     pub const MAX: u32 = 4;
     // pub const MAX: u32 = 4;
-    //minimum amount of frames that should be played from attack animation
+    // minimum amount of frames that should be played from attack animation
     pub const MIN: u32 = 2;
 }
 impl GentState for Attacking {}
@@ -761,8 +762,8 @@ impl WallSlideTime {
     /// Checks that player is actually against the wall, rather then it being close
     /// enough time from the player having left the wall to still jump
     /// (ie: not wall_jump_coyote_time)
-    fn is_pressed_against_wall(&self, time: &Res<GameTime>) -> bool {
-        self.0 <= 1.0 / time.hz as f32
+    fn is_pressed_against_wall(&self) -> bool {
+        self.0 <= 1.0
     }
 }
 
@@ -821,16 +822,16 @@ pub struct PlayerConfig {
     /// How many ticks is the players velocity locked to zero after landing an attack?
     hitfreeze_ticks: u32,
 
-    /// How many seconds does our character dash for?
+    /// How many ticks does our character dash for?
     dash_duration: f32,
 
-    /// How many seconds does our character dash for?
+    /// How many ticks does our character dash for?
     dash_down_duration: f32,
 
-    /// How many seconds does our character stealth for?
+    /// How many ticks does our character stealth for?
     stealth_duration: f32,
 
-    /// How many seconds does our character stealth for?
+    /// How many ticks does our character stealth for?
     pub stealth_cooldown: f32,
 
     /// How many pixels/s do they dash with?
@@ -842,10 +843,10 @@ pub struct PlayerConfig {
     /// How many pixels/s (vertically) do they dash with when doing a downward dash?
     dash_down_vertical_velocity: f32,
 
-    /// How long before the player can dash again?
+    /// How long before the player can dash again in ticks?
     pub dash_cooldown_duration: f32,
 
-    /// How long before the player can dash again?
+    /// How long before the player can dash again in ticks?
     pub dash_down_cooldown_duration: f32,
 
     pub max_whirl_energy: f32,
@@ -853,7 +854,7 @@ pub struct PlayerConfig {
     /// Spends this much energy per second when using whirl
     whirl_cost: f32,
 
-    /// Spends this much energy per second when not using whirl
+    /// Spends this much energy per tick when not using whirl
     whirl_regen: f32,
 
     /// How much max health the player has
@@ -1107,6 +1108,7 @@ pub struct PlayerStatMod {
     pub attack: f32,
     pub defense: f32,
     pub speed: f32,
+    /// Cooldown reduction amount per tick
     pub cdr: f32,
 }
 
@@ -1139,7 +1141,7 @@ fn player_update_passive_buffs(
         let mut speed = 1.;
         let mut cdr = 1.;
         if passives.contains(&Passive::GlowingShard) {
-            attack *= (1. + 0.1 * enemies_nearby.0 as f32);
+            attack *= 1. + 0.1 * enemies_nearby.0 as f32;
         }
         if passives.contains(&Passive::SerpentRing) {
             speed *= 1.2;
@@ -1147,7 +1149,7 @@ fn player_update_passive_buffs(
             defense *= 0.5;
         }
         if passives.contains(&Passive::HeavyBoots) {
-            //if we are moving
+            // if we are moving
             if vel.length() > 0.0001 {
                 attack *= 0.5;
                 defense *= 0.5;
@@ -1178,7 +1180,7 @@ fn player_update_stats_mod(
         &mut PlayerStats,
     )>,
     mut gfx_query: Query<(&PlayerGfx, &mut Sprite)>,
-    //TODO: switch to ticks
+    // TODO: switch to ticks
     time: Res<Time<Virtual>>,
     mut commands: Commands,
 ) {
@@ -1195,7 +1197,7 @@ fn player_update_stats_mod(
 
         sprite.color = modifier.effect_col;
 
-        //TODO: switch to ticks
+        // TODO: switch to ticks
         modifier.time_remaining -= time.delta_seconds();
 
         if modifier.time_remaining < 0. {
@@ -1361,7 +1363,7 @@ pub fn on_crit_cooldown_reduce(
                     whirl_ability.energy += 0.5;
                 }
                 if let Some(ref mut can_stealth) = maybe_can_stealth {
-                    can_stealth.remaining_cooldown -= 0.5;
+                    can_stealth.remaining_cooldown -= 48.;
                 }
             }
         }
@@ -1442,7 +1444,7 @@ fn track_hits(
     mut damage_events: EventReader<DamageInfo>,
 ) {
     if let Ok((player_e, passives, mut buff)) = query.get_single_mut() {
-        //tick falloff
+        // tick falloff
         buff.falloff = buff.falloff.saturating_sub(1);
         if passives.contains(&Passive::FrenziedAttack) {
             for damage_info in damage_events.read() {

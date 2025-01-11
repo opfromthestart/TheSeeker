@@ -17,9 +17,7 @@ impl Projectile {
     /// Creates a projectile component with a starting [`LinearVelocity`]
     /// of magnitude vel, such that the projectile will intersect target.
     ///
-    /// set gravity to Playerconfig.fall_accel * time.hz
-    /// since Playerconfig.fall_accel is in pixels/tick, you need to multiply by the time.hz
-    /// to convert to per/second units, like velocity is.
+    /// set gravity to Playerconfig.fall_accel
     pub fn with_vel(
         target: Vec2,
         start: Vec2,
@@ -61,7 +59,6 @@ pub fn arc_projectile(
         With<Attack>,
     >,
     config: Res<PlayerConfig>,
-    time: Res<GameTime>,
 ) {
     let fall_accel = config.fall_accel;
     for (mut transform, mut projectile, arrow) in query.iter_mut() {
@@ -69,8 +66,7 @@ pub fn arc_projectile(
             projectile.vel.0.y -= fall_accel;
         }
         let z = transform.translation.z;
-        transform.translation = (transform.translation.xy()
-            + *projectile.vel * (1.0 / time.hz as f32))
-            .extend(z);
+        transform.translation =
+            (transform.translation.xy() + *projectile.vel).extend(z);
     }
 }

@@ -17,10 +17,11 @@ use theseeker_engine::script::ScriptPlayer;
 
 use super::physics::Knockback;
 use super::player::{Player, PlayerConfig, StatusModifier, Stealthing};
+use crate::game::attack::arc_attack::Projectile;
 use crate::game::attack::particles::ArcParticleEffectHandle;
 use crate::game::attack::*;
 use crate::game::gentstate::*;
-use crate::game::{attack::arc_attack::Projectile, player::EnemiesNearby};
+use crate::game::player::EnemiesNearby;
 use crate::graphics::particles_util::BuildParticles;
 use crate::prelude::*;
 
@@ -572,7 +573,7 @@ fn check_player_range(
     if let Ok((player_e, player_trans, player_stealth, mut enemies_nearby)) =
         player_query.get_single_mut()
     {
-        //reset every tick
+        // reset every tick
         **enemies_nearby = 0;
 
         for (
@@ -586,7 +587,7 @@ fn check_player_range(
             is_defending,
         ) in query.iter_mut()
         {
-            //TODO: still update enemies nearby in stealth?
+            // TODO: still update enemies nearby in stealth?
             if player_stealth.is_some() {
                 *range = Range::Deaggro;
                 target.0 = None;
@@ -799,9 +800,11 @@ fn aggro(
                 transitions.push(Aggroed::new_transition(Patrolling));
             } else if matches!(range, Range::Melee) {
                 match role {
-                    Role::Melee => transitions.push(Waiting::new_transition(
-                        MeleeAttack::default(),
-                    )),
+                    Role::Melee => {
+                        transitions.push(Waiting::new_transition(
+                            MeleeAttack::default(),
+                        ))
+                    },
                     Role::Ranged => {
                         velocity.x = 0.;
                         transitions.push(Waiting::new_transition(
@@ -843,7 +846,6 @@ fn ranged_attack(
     player_query: Query<&Transform, With<Player>>,
     mut commands: Commands,
     config: Res<PlayerConfig>,
-    time: Res<GameTime>,
     particle_effect: Res<ArcParticleEffectHandle>,
 ) {
     for (
@@ -923,7 +925,7 @@ fn ranged_attack(
                 enemy_transform.translation().y - transform.translation.y;
             let delta_x =
                 transform.translation.x - enemy_transform.translation().x;
-            let gravity = config.fall_accel * time.hz as f32;
+            let gravity = config.fall_accel;
             let rng_factor = 1.0;
             let mut speed =
                 ballistic_speed(Range::RANGED, gravity, relative_height)
@@ -1061,7 +1063,8 @@ fn walking(
     ) in query.iter_mut()
     {
         // set initial velocity
-        velocity.x = -20. * facing.direction();
+        // TODO: move this to config file
+        velocity.x = -0.2083 * facing.direction();
         if walking.ticks >= walking.max_ticks {
             velocity.x = 0.;
             transitions.push(Walking::new_transition(Waiting {
@@ -1198,7 +1201,7 @@ fn chasing(
                     ));
                 },
                 Range::Ranged | Range::Aggro | Range::Deaggro => {
-                    velocity.x = -35. * facing.direction();
+                    velocity.x = -0.3646 * facing.direction();
                     // if we cant get any closer because of edge
                     if let Navigation::Blocked = *nav {
                         velocity.x = 0.;
@@ -1237,7 +1240,6 @@ fn move_collide(
         ),
         With<Enemy>,
     >,
-    time: Res<GameTime>,
     spatial_query: Res<PhysicsWorld>,
 ) {
     for (mut linear_velocity, mut transform, mut nav, collider, is_knocked) in
@@ -1259,7 +1261,7 @@ fn move_collide(
                 transform.translation.xy(),
                 shape_dir,
                 &*shape,
-                linear_velocity.length() / time.hz as f32 + 0.5,
+                linear_velocity.length() + 0.5,
                 InteractionGroups {
                     memberships: ENEMY,
                     // combination of the PLAYER + GROUND Groups
@@ -1290,7 +1292,7 @@ fn move_collide(
             // TODO: should be based on collider half extent y + a little
             Vec2::new(front, transform.translation.y - 10.),
             Vec2::new(dir, 0.),
-            x_len / time.hz as f32,
+            x_len,
             false,
             InteractionGroups {
                 memberships: ENEMY,
@@ -1304,9 +1306,8 @@ fn move_collide(
             projected_velocity.x = first_hit.toi * dir;
         }
 
-        transform.translation = (transform.translation.xy()
-            + projected_velocity * (1.0 / time.hz as f32))
-            .extend(z);
+        transform.translation =
+            (transform.translation.xy() + projected_velocity).extend(z);
     }
 }
 

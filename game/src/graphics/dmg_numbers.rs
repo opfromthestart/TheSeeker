@@ -23,7 +23,7 @@ impl Plugin for DmgNumbersPlugin {
 /// Marker component for a damage number, the vec2 is the starting spawn location
 /// in world space, and the f32 is the time it was spawned in
 #[derive(Component)]
-struct DmgNumber(Vec3, f64);
+struct DmgNumber(Vec3, u64);
 
 fn instance(
     mut commands: Commands,
@@ -66,11 +66,7 @@ fn instance(
                 .unwrap_or_default();
 
             commands.spawn((
-                DmgNumber(
-                    world_position,
-                    game_time.tick() as f64 / game_time.hz
-                        + game_time.last_update().as_secs_f64(),
-                ),
+                DmgNumber(world_position, game_time.tick()),
                 TextBundle::from_section(
                     format!("{}", damage_info.amount),
                     TextStyle {
@@ -117,20 +113,23 @@ fn update_number(
     let Some((camera_transform, camera)) = q_cam.iter().next() else {
         return;
     };
-    let max_time = 6.0;
+    let max_time = 6 * 96;
 
     for (entity, mut dmg_number, mut style, mut text) in dmg_numer_q.iter_mut()
     {
         let text_style = &mut text.sections[0].style;
         // This way the floating text position is dependent on the gametick time,
         // so if the game is paused, the floating numbers will pause as well.
-        let elapsed_time = game_time.tick() as f64 / game_time.hz
-            + game_time.last_update().as_secs_f64()
-            - dmg_number.1;
+
+        let elapsed_ticks = game_time.tick() - dmg_number.1;
 
         // apply a little wobble affect, and start each with a random different phase
-        let global_pos =
-            dmg_number.0 + Vec3::new(0.0, 3.0 * elapsed_time as f32, 0.0);
+        let global_pos = dmg_number.0
+            + Vec3::new(
+                0.0,
+                3.0 * (elapsed_ticks as f32 / 96.),
+                0.0,
+            );
         let screen_position = camera
             .world_to_viewport(camera_transform, global_pos)
             .unwrap();
@@ -141,7 +140,7 @@ fn update_number(
             .a()
             .lerp(
                 0.0,
-                (elapsed_time as f32 - 1.0) / (max_time - 1.0),
+                (elapsed_ticks as f32 - 1.0) / (max_time as f32 - 1.0),
             )
             .clamp(0.0, 1.0);
 
@@ -156,7 +155,7 @@ fn update_number(
         style.top = Val::Px(screen_position.y);
         style.position_type = PositionType::Absolute;
 
-        if elapsed_time as f32 > max_time {
+        if elapsed_ticks > max_time {
             commands.entity(entity).despawn();
         }
     }

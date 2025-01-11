@@ -202,12 +202,11 @@ fn track_particles_parent(
 }
 
 fn despawn_lingering(
-    time: Res<GameTime>,
     mut query: Query<(Entity, &mut SystemLifetime), Without<Parent>>,
     mut commands: Commands,
 ) {
     for (entity, mut lifetime) in &mut query {
-        lifetime.0 -= 1.0 / time.hz as f32;
+        lifetime.0 -= 1.0;
         if lifetime.0 < 0.0 {
             commands.entity(entity).despawn();
         }

@@ -1,34 +1,34 @@
 # Note: Setting some of these to negative values *WILL* cause a panic
 
 # The maximum horizontal velocity the player can move at.
-# (in pixels/second)
-max_move_vel = 70.0
+# (in pixels/tick)
+max_move_vel = 0.7292
 
 # The maximum downward velocity the player can fall at.
-# (in pixels/second)
-max_fall_vel = 180.0
+# (in pixels/tick)
+max_fall_vel = 1.875
 
 # The initial acceleration applied to the player for the first tick they start moving.
 # (in pixels/second^2)
-move_accel_init = 20.0
+move_accel_init = 0.00217
 
 # The acceleration applied to the player while they continue moving horizontally.
 # (in pixels/second^2)
 move_accel = 20.0
 
 # How much velocity does the player have at the moment they jump?
-# (in pixels/second)
-jump_vel_init = 155.0
+# (in pixels/tick)
+jump_vel_init = 1.615
 
 # How fast does the player accelerate downward while holding down the jump button?
 # (in pixels/tick^2)
-jump_fall_accel = 3.5
+jump_fall_accel = 0.03646
 
 # How fast does the player accelerate downward while in the falling state?
 # (ie: after releasing the jump key)
 # (in pixels/tick^2)
 # Note: sets the games global_gravity! (affects projectiles and other things that fall)
-fall_accel = 4.5
+fall_accel = 0.046875
 
 # How many seconds does our characters innate hover boots work?
 max_coyote_time = 0.1
@@ -40,46 +40,46 @@ sliding_friction = 0.25
 # How many ticks is the players velocity locked to zero after landing an attack?
 hitfreeze_ticks = 45.0
 
-# How many seconds does our character dash for?
-dash_duration = 0.06
+# How many ticks does our character dash for?
+dash_duration = 6.0
 
 # How many seconds does our character dash down for?
-dash_down_duration = 0.3
+dash_down_duration = 29.0
+
+# How many ticks does our character stealth for?
+stealth_duration = 288.0
 
 # How many seconds does our character stealth for?
-stealth_duration = 3.0
+stealth_cooldown = 480.0
 
-# How many seconds does our character stealth for?
-stealth_cooldown = 5.0
+# How many pixels/tick do they dash with?
+dash_velocity = 4.17
 
-# How many pixels/s do they dash with?
-dash_velocity = 400.0
+# How many pixels/tick do they dash down with, horizontally?
+dash_down_horizontal_velocity = 5.208
 
-# How many pixels/s do they dash down with, horizontally?
-dash_down_horizontal_velocity = 500.0
+# How many pixels/tick do they dash down with, vertically?
+dash_down_vertical_velocity = 5.208
 
-# How many pixels/s do they dash down with, vertically?
-dash_down_vertical_velocity = 500.0
+# How long before the player can dash again in ticks?
+dash_cooldown_duration = 96.0
 
-# How long before the player can dash again?
-dash_cooldown_duration = 1.0
-
-# How long before the player can dash again?
-dash_down_cooldown_duration = 5.0
+# How long before the player can dash again in ticks?
+dash_down_cooldown_duration = 480.0
 
 max_whirl_energy = 5.0
 
-# Spends this much energy per second when using whirl
-whirl_cost = 2.0
+# Spends this much energy per tick when using whirl
+whirl_cost = 0.0208333
 
-# Spends this much energy per second when not using whirl
-whirl_regen = 0.7
+# Spends this much energy per tick when not using whirl
+whirl_regen = 0.0072917
 
 # How much max health the player has
 max_health = 150.0
 
 # Pushback velocity on wall jumps
-wall_pushback = 50.0
+wall_pushback = 0.5208
 
 # Ticks for wall pushback velocity; determines how long movement is locked for
 wall_pushback_ticks = 5.0
